@@ -145,10 +145,10 @@ def commitRecord(dicovered_ip):
                 fqdn = name + "." + base_domain_name
             addr_type = ip["type"]
 
-            ipv6_token_override = subdomain.get('ipv6_suffix_override',)
-            if addr_type == "AAAA" and ipv6_token_override:
+            ipv6_suffix_override = subdomain.get('ipv6_suffix_override')
+            if addr_type == "AAAA" and ipv6_suffix_override:
                 prefix_length = subdomain.get('ipv6_prefix_length', 64)
-                ip["ip"] = replace_ipv6_suffix(ip["ip"], subdomain['ipv6_token_override'], prefix_length)
+                ip["ip"] = replace_ipv6_suffix(ip["ip"], ipv6_suffix_override, prefix_length)
 
             record = {
                 "type": addr_type,
