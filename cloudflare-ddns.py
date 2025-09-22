@@ -8,6 +8,7 @@
 
 __version__ = "1.0.2"
 
+import copy
 import ipaddress
 from string import Template
 
@@ -121,9 +122,10 @@ def getIPs():
     return ips
 
 
-def commitRecord(ip):
+def commitRecord(dicovered_ip):
     global ttl
     for option in config["cloudflare"]:
+        ip = copy.deepcopy(dicovered_ip)
         subdomains = option["subdomains"]
         response = cf_api("zones/" + option['zone_id'], "GET", option)
         if response is None or response["result"]["name"] is None:
@@ -142,17 +144,16 @@ def commitRecord(ip):
             if name != '' and name != '@':
                 fqdn = name + "." + base_domain_name
             addr_type = ip["type"]
-            ip = ip["ip"]
 
             ipv6_token_override = subdomain.get('ipv6_suffix_override',)
             if addr_type == "AAAA" and ipv6_token_override:
                 prefix_length = subdomain.get('ipv6_prefix_length', 64)
-                ip = replace_ipv6_suffix(ip, subdomain['ipv6_token_override'], prefix_length)
+                ip["ip"] = replace_ipv6_suffix(ip["ip"], subdomain['ipv6_token_override'], prefix_length)
 
             record = {
                 "type": addr_type,
                 "name": fqdn,
-                "content": ip,
+                "content": ip["ip"],
                 "proxied": proxied,
                 "ttl": ttl
             }
