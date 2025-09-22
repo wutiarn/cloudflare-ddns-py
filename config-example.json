@@ -17,6 +17,11 @@
         {
           "name": "remove_or_replace_with_your_subdomain",
           "proxied": false
+        },
+        {
+          "name": "ipv6-router",
+          "ipv6_suffix_override": "::1",
+          "ipv6_prefix_length": 64
         }
       ]
     }
