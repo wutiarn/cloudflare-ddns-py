@@ -8,6 +8,7 @@
 
 __version__ = "1.0.2"
 
+import ipaddress
 from string import Template
 
 import json
@@ -140,16 +141,24 @@ def commitRecord(ip):
             # Check if name provided is a reference to the root domain
             if name != '' and name != '@':
                 fqdn = name + "." + base_domain_name
+            addr_type = ip["type"]
+            ip = ip["ip"]
+
+            ipv6_token_override = subdomain.get('ipv6_suffix_override',)
+            if addr_type == "AAAA" and ipv6_token_override:
+                prefix_length = subdomain.get('ipv6_prefix_length', 64)
+                ip = replace_ipv6_suffix(ip, subdomain['ipv6_token_override'], prefix_length)
+
             record = {
-                "type": ip["type"],
+                "type": addr_type,
                 "name": fqdn,
-                "content": ip["ip"],
+                "content": ip,
                 "proxied": proxied,
                 "ttl": ttl
             }
             dns_records = cf_api(
                 "zones/" + option['zone_id'] +
-                "/dns_records?per_page=100&type=" + ip["type"],
+                "/dns_records?per_page=100&type=" + addr_type,
                 "GET", option)
             identifier = None
             modified = False
@@ -158,7 +167,7 @@ def commitRecord(ip):
                 for r in dns_records["result"]:
                     if (r["name"] == fqdn):
                         if identifier:
-                            if r["content"] == ip["ip"]:
+                            if r["content"] == ip:
                                 duplicate_ids.append(identifier)
                                 identifier = r["id"]
                             else:
@@ -246,6 +255,17 @@ def updateIPs(ips):
     for ip in ips.values():
         commitRecord(ip)
         #updateLoadBalancer(ip)
+
+def replace_ipv6_suffix(addr: str, new_suffix: str, prefix_len: int) -> str:
+    ip = ipaddress.IPv6Address(addr)
+    suffix = ipaddress.IPv6Address(new_suffix)
+
+    # zero upper prefix_len bits of the suffix to ensure only host part remains
+    token_int = int(suffix) & ((1 << prefix_len) - 1)
+
+    # replace last prefix_len bits of the original address
+    new_ip_int = (int(ip) & (~((1 << prefix_len) - 1))) | token_int
+    return str(ipaddress.IPv6Address(new_ip_int))
 
 
 if __name__ == '__main__':
